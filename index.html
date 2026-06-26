@@ -720,8 +720,57 @@ createApp({
       return map[condition] || 'fa-solid fa-cloud-question';
     };
     const getWeatherDescription = (condition) => {
-      const map = { snow: '大雪/降雪', sunny: '晴朗', cloudy: '多雲/陰天', rain: '降雨' };
-      return map[condition] || '天氣資訊未定';
+// 實時抓取天氣並更新畫面的函式
+async function fetchRealWeather(cityName) {
+    // ⚠️ 請把下方的 'YOUR_API_KEY' 替換成您在 WeatherAPI 申請到的真實金鑰
+    const apiKey = 'ffc883f58bb9433a80583736262606'; 
+    const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${cityName}&days=1&lang=zh_tw`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('網路回應不成功');
+        
+        const data = await response.json();
+
+        // 1. 從 API 資料中提取真實的溫度與體感溫度
+        const currentTemp = Math.round(data.current.temp_c);       // 實際溫度（四捨五入取整數）
+        const feelsLikeTemp = Math.round(data.current.feelslike_c); // 體感溫度
+        const apiWeatherText = data.current.condition.text;         // API 回傳的中文天氣描述（例如：晴天、毛毛雨）
+
+        // 2. 將 API 的天氣狀態對應到您原本程式碼定義的四種分類：sunny, cloudy, rain, snow
+        let myCondition = 'cloudy'; // 預設為多雲
+        
+        if (apiWeatherText.includes('晴')) {
+            myCondition = 'sunny';
+        } else if (apiWeatherText.includes('雨') || apiWeatherText.includes('雷')) {
+            myCondition = 'rain';
+        } else if (apiWeatherText.includes('雪') || apiWeatherText.includes('凍')) {
+            myCondition = 'snow';
+        }
+
+        // 3. 帶入您原本寫好的函式，取得對應的圖示與文字
+        const finalIconClass = getWeatherIcon(myCondition); // 取得如 'fa-solid fa-snowflake'
+        const finalDescription = getWeatherDescription(myCondition); // 取得如 '大雪/降雪' 或 '晴朗'
+
+        // 4. 將這些資料渲染到您的網頁 HTML 畫面上
+        // ⚠️ 請確認您的 HTML 標籤有設定對應的 id（如下方範例）
+        document.getElementById('weather-icon').className = finalIconClass;
+        document.getElementById('temperature').innerText = `${currentTemp}°C`;
+        document.getElementById('feels-like').innerText = `體感: ${feelsLikeTemp}°C`;
+        document.getElementById('weather-text').innerText = finalDescription; // 或者直接用 apiWeatherText 顯示更精準的「毛毛雨」
+
+    } catch (error) {
+        console.error('抓取天氣資料失敗:', error);
+        // 失敗時的備用顯示
+        document.getElementById('weather-text').innerText = '天氣資訊載入失敗';
+    }
+}
+
+// 測試：網頁載入時，自動抓取 札幌 (Sapporo) 的天氣
+// 如果之後要去富良野，可以傳入 'Furano'
+window.addEventListener('DOMContentLoaded', () => {
+    fetchRealWeather('Sapporo'); 
+});
     };
     const getTransportIcon = (type) => {
       const map = { walk: 'fa-solid fa-shoe-prints', car: 'fa-solid fa-car-side', bus: 'fa-solid fa-bus-simple', public: 'fa-solid fa-train-subway', flight: 'fa-solid fa-plane', other: 'fa-solid fa-solid fa-arrow-right-long' };
